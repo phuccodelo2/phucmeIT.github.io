@@ -25,9 +25,9 @@
     .floating-text {
       position: absolute;
       font-size: 18px;
-      color: #ff2d6d;
+      color: #0000FF;
       font-weight: bold;
-      text-shadow: 0 0 8px #ff2d6d, 0 0 15px #ff6aa2;
+      text-shadow: 0 0 8px #0000FF, 0 0 15px #0000FF;
       pointer-events: none;
       white-space: nowrap;
       user-select: none;
@@ -38,7 +38,7 @@
       height: 40px;
       pointer-events: none;
       user-select: none;
-      filter: drop-shadow(0 0 6px #ff8cb3);
+      filter: drop-shadow(0 0 6px #0000FF);
     }
   </style>
 </head>
@@ -133,7 +133,7 @@ function ParticlePool(len){
     function to(t){var p=pointOnHeart(t);p.x=settings.particles.size/2+p.x*settings.particles.size/350;p.y=settings.particles.size/2-p.y*settings.particles.size/350;return p;}
     ctx2.beginPath();var t=-Math.PI;var p=to(t);ctx2.moveTo(p.x,p.y);
     while(t<Math.PI){t+=0.01;p=to(t);ctx2.lineTo(p.x,p.y);}ctx2.closePath();
-    ctx2.fillStyle='#f50b02';ctx2.fill();
+    ctx2.fillStyle='#0000FF';ctx2.fill();
     var image=new Image();image.src=c.toDataURL();return image;
   })();
 
