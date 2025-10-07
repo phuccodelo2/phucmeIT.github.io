@@ -1,0 +1,239 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+  <title>MINH IT</title>
+  <meta name="Generator" content="EditPlus">
+  <meta name="Author" content="">
+  <meta name="Keywords" content="">
+  <meta name="Description" content="">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    html, body {
+      height: 100%;
+      padding: 0;
+      margin: 0;
+      background: rgba(0,0,0,0.85);
+      overflow: hidden;
+      font-family: Arial, sans-serif;
+    }
+    canvas {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .floating-text {
+      position: absolute;
+      font-size: 18px;
+      color: #ff2d6d;
+      font-weight: bold;
+      text-shadow: 0 0 8px #ff2d6d, 0 0 15px #ff6aa2;
+      pointer-events: none;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .fly-image {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      pointer-events: none;
+      user-select: none;
+      filter: drop-shadow(0 0 6px #ff8cb3);
+    }
+  </style>
+</head>
+<body>
+  <canvas id="pinkboard"></canvas>
+
+<script>
+// ================== SETTINGS ==================
+var settings = {
+  particles: {
+    length: 3000,       // max particle count (mobile mượt hơn)
+    duration: 1,
+    velocity: 40,
+    effect: -10.5,
+    size: 8
+  }
+};
+
+// ================== HELPER CLASSES ==================
+(function(){var b=0,c=["ms","moz","webkit","o"];for(var a=0;a<c.length&&!window.requestAnimationFrame;++a){window.requestAnimationFrame=window[c[a]+"RequestAnimationFrame"];window.cancelAnimationFrame=window[c[a]+"CancelAnimationFrame"]||window[c[a]+"CancelRequestAnimationFrame"]}if(!window.requestAnimationFrame){window.requestAnimationFrame=function(h,e){var d=new Date().getTime();var f=Math.max(0,16-(d-b));var g=window.setTimeout(function(){h(d+f)},f);b=d+f;return g}}if(!window.cancelAnimationFrame){window.cancelAnimationFrame=function(d){clearTimeout(d)}}}());
+
+function Point(x,y){this.x=x||0;this.y=y||0;}
+Point.prototype.clone=function(){return new Point(this.x,this.y);}
+Point.prototype.length=function(l){if(typeof l==='undefined')return Math.sqrt(this.x*this.x+this.y*this.y);this.normalize();this.x*=l;this.y*=l;return this;}
+Point.prototype.normalize=function(){var l=this.length();this.x/=l;this.y/=l;return this;}
+
+function Particle(){
+  this.position=new Point();
+  this.velocity=new Point();
+  this.acceleration=new Point();
+  this.age=0;
+}
+Particle.prototype.initialize=function(x,y,dx,dy){
+  this.position.x=x;
+  this.position.y=y;
+  this.velocity.x=dx;
+  this.velocity.y=dy;
+  this.acceleration.x=dx*settings.particles.effect;
+  this.acceleration.y=dy*settings.particles.effect;
+  this.age=0;
+}
+Particle.prototype.update=function(dt){
+  this.position.x+=this.velocity.x*dt;
+  this.position.y+=this.velocity.y*dt;
+  this.velocity.x+=this.acceleration.x*dt;
+  this.velocity.y+=this.acceleration.y*dt;
+  this.age+=dt;
+}
+Particle.prototype.draw=function(ctx,img){
+  function ease(t){return (--t)*t*t+1;}
+  var size=img.width*ease(this.age/settings.particles.duration);
+  ctx.globalAlpha=1-this.age/settings.particles.duration;
+  ctx.drawImage(img,this.position.x-size/2,this.position.y-size/2,size,size);
+}
+
+function ParticlePool(len){
+  var particles=[],firstActive=0,firstFree=0,duration=settings.particles.duration;
+  for(var i=0;i<len;i++)particles.push(new Particle());
+  this.add=function(x,y,dx,dy){
+    particles[firstFree].initialize(x,y,dx,dy);
+    firstFree++; if(firstFree==particles.length)firstFree=0;
+    if(firstActive==firstFree)firstActive++;
+    if(firstActive==particles.length)firstActive=0;
+  }
+  this.update=function(dt){
+    if(firstActive<firstFree){for(var i=firstActive;i<firstFree;i++)particles[i].update(dt);}
+    if(firstFree<firstActive){for(var i=firstActive;i<particles.length;i++)particles[i].update(dt);for(var i=0;i<firstFree;i++)particles[i].update(dt);}
+    while(particles[firstActive].age>=duration&&firstActive!=firstFree){firstActive++;if(firstActive==particles.length)firstActive=0;}
+  }
+  this.draw=function(ctx,img){
+    if(firstActive<firstFree){for(var i=firstActive;i<firstFree;i++)particles[i].draw(ctx,img);}
+    if(firstFree<firstActive){for(var i=firstActive;i<particles.length;i++)particles[i].draw(ctx,img);for(var i=0;i<firstFree;i++)particles[i].draw(ctx,img);}
+  }
+}
+
+// ================== PARTICLE HEART ==================
+(function(canvas){
+  var ctx=canvas.getContext('2d'),
+      pool=new ParticlePool(settings.particles.length),
+      rate=settings.particles.length/settings.particles.duration,
+      time;
+
+  function pointOnHeart(t){
+    return new Point(
+      160*Math.pow(Math.sin(t),3),
+      130*Math.cos(t)-50*Math.cos(2*t)-20*Math.cos(3*t)-10*Math.cos(4*t)+25
+    );
+  }
+
+  var img=(function(){
+    var c=document.createElement('canvas'),ctx2=c.getContext('2d');c.width=settings.particles.size;c.height=settings.particles.size;
+    function to(t){var p=pointOnHeart(t);p.x=settings.particles.size/2+p.x*settings.particles.size/350;p.y=settings.particles.size/2-p.y*settings.particles.size/350;return p;}
+    ctx2.beginPath();var t=-Math.PI;var p=to(t);ctx2.moveTo(p.x,p.y);
+    while(t<Math.PI){t+=0.01;p=to(t);ctx2.lineTo(p.x,p.y);}ctx2.closePath();
+    ctx2.fillStyle='#f50b02';ctx2.fill();
+    var image=new Image();image.src=c.toDataURL();return image;
+  })();
+
+  function render(){
+    requestAnimationFrame(render);
+    var now=Date.now()/10000,dt=now-(time||now);time=now;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    var amt=rate*dt;
+    for(var i=0;i<amt;i++){
+      var pos=pointOnHeart(Math.PI-2*Math.PI*Math.random());
+      var dir=pos.clone().length(settings.particles.velocity);
+      pool.add(canvas.width/2+pos.x,canvas.height/2-pos.y,dir.x,-dir.y);
+    }
+    pool.update(dt); pool.draw(ctx,img);
+  }
+
+  function resize(){canvas.width=canvas.clientWidth;canvas.height=canvas.clientHeight;}
+  window.onresize=resize;
+  resize(); render();
+})(document.getElementById('pinkboard'));
+
+// ================== FLOATING TEXT + IMAGE OPTIMIZED ==================
+var imageLinks = [
+  'https://files.catbox.moe/xdssb5.jpeg',
+  'https://files.catbox.moe/netfsr.jpeg',
+  'https://files.catbox.moe/xdssb5.jpeg',
+  'https://files.catbox.moe/netfsr.jpeg',
+    'https://files.catbox.moe/xdssb5.jpeg',
+  'https://files.catbox.moe/netfsr.jpeg'
+];
+
+var floatingTexts = [], floatingImages = [];
+var screenWidth = window.innerWidth;
+
+// Hàm kiểm tra khoảng cách tránh chồng lẫn
+function isPositionFree(x, arr, minDistance=50) {
+  for (let obj of arr) {
+    let ox = parseFloat(obj.style.left);
+    if (Math.abs(ox - x) < minDistance) return false;
+  }
+  return true;
+}
+
+// Tạo chữ bay
+function createFloatingText() {
+  let x = Math.random() * screenWidth;
+  if (!isPositionFree(x, floatingTexts)) return; // né chữ gần nhau
+
+  let text = document.createElement('div');
+  text.className = 'floating-text';
+  text.textContent = 'Anh yêu em ❤';
+  text.style.left = x + 'px';
+  text.style.top = window.innerHeight + 'px';
+  text.style.zIndex = Math.floor(Math.random() * 1000);
+  document.body.appendChild(text);
+  floatingTexts.push(text);
+}
+
+// Tạo ảnh bay
+function createFloatingImage() {
+  let x = Math.random() * screenWidth;
+  if (!isPositionFree(x, floatingImages)) return; // né ảnh gần nhau
+
+  let img = document.createElement('img');
+  img.className = 'fly-image';
+  img.src = imageLinks[Math.floor(Math.random() * imageLinks.length)];
+  img.style.left = x + 'px';
+  img.style.top = window.innerHeight + 'px';
+  img.style.zIndex = Math.floor(Math.random() * 1000);
+  document.body.appendChild(img);
+  floatingImages.push(img);
+}
+
+// Spawn liên tục, nhanh hơn và nhiều hơn
+setInterval(createFloatingText, 20); // mỗi 0.15s spawn 1 chữ
+setInterval(createFloatingImage, 10); // mỗi 0.3s spawn 1 ảnh
+
+// Update vị trí chữ + ảnh (bay lên nhanh)
+function updateFloatingObjects() {
+  floatingTexts.forEach((t,i)=>{
+    let top = parseFloat(t.style.top);
+    t.style.top = (top - 50) + 'px'; // tăng tốc bay
+    t.style.opacity = Math.min(1,(window.innerHeight-top)/window.innerHeight+0.3);
+    if(top < -500){ t.remove(); floatingTexts.splice(i,1);}
+  });
+
+  floatingImages.forEach((img,i)=>{
+    let top = parseFloat(img.style.top);
+    img.style.top = (top - 55) + 'px'; // tăng tốc bay
+    img.style.opacity = Math.min(1,(window.innerHeight-top)/window.innerHeight+0.3);
+    if(top < -400){ img.remove(); floatingImages.splice(i,1);}
+  });
+}
+
+// Chạy update liên tục
+(function updateLoop(){
+  requestAnimationFrame(updateLoop);
+  updateFloatingObjects();
+})();
+</script>
+</body>
+</html>
